@@ -1,4 +1,5 @@
 from joblib import load
+import pandas as pd
 
 class Model:
 
@@ -7,4 +8,5 @@ class Model:
 
     def make_predictions(self, data):
         result = self.model.predict(data)
+        result = pd.DataFrame(result)
         return result

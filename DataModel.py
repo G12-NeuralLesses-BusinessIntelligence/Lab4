@@ -15,4 +15,6 @@ class DataModel(BaseModel):
 
 #Esta función retorna los nombres de las columnas correspondientes con el modelo esxportado en joblib.
     def columns(self):
-        return ["Serial No.","GRE Score","TOEFL Score","University Rating","SOP","LOR" ,"CGPA","Research","Admission Points"]
+        return ['Serial No.', 'GRE Score', 'TOEFL Score', 'University Rating', 'SOP',
+       'LOR ', 'CGPA', 'Research', 'Admission Points']
+
