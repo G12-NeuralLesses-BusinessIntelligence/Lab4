@@ -4,6 +4,7 @@ from fastapi import FastAPI
 import pandas as pd
 from joblib import load,  dump
 from sklearn.metrics import r2_score
+import json
 
 
 
@@ -20,13 +21,16 @@ def read_item(item_id: int, q: Optional[str] = None):
 
 
 @app.post("/predict")
-def make_predictions(dataModel: DataModel):
-   df = pd.DataFrame(dataModel.dict(), columns=dataModel.dict().keys(), index=[0])
-   df.columns = dataModel.columns()
+def make_predictions(list_dataModel: list):
+   dataModels = [json.loads(json.dumps(data), object_hook=lambda d: DataModel(**d)) for data in list_dataModel]
+   df = pd.DataFrame(dataModels[0].dict() , columns=dataModels[0].dict().keys(), index=[0])
+   for i in range(1, len(list_dataModel)):
+      df = df.append(pd.DataFrame(dataModels[i].dict() , columns=dataModels[0].dict().keys(), index=[0]), ignore_index = True)
+   df.columns = dataModels[0].columns()
    model = load("assets/modelo.joblib")
    result = model.predict(df)
-   result_dict = pd.DataFrame(result).to_dict()
-   return result_dict
+
+   return pd.DataFrame(result).to_dict()
 
 
 @app.post("/r2")
