@@ -2,11 +2,17 @@ from typing import Optional
 from DataModel import DataModel
 from fastapi import FastAPI
 import pandas as pd
+import numpy as np
 from joblib import load,  dump
-from sklearn.metrics import r2_score
 import json
 
-
+from sklearn.linear_model import LinearRegression
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+from sklearn.compose import ColumnTransformer
+from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
+from sklearn.metrics import r2_score
 
 app = FastAPI()
 
@@ -30,15 +36,48 @@ def make_predictions(list_dataModel: list):
    model = load("assets/modelo.joblib")
    result = model.predict(df)
 
-   return pd.DataFrame(result).to_dict()
+   return {"results": pd.DataFrame(result).to_dict()}
 
 
-@app.post("/r2")
-def calculate_r2(df_in: str):
-   df = pd.read_json(df_in)
-   y_real = df["Admission Points"]
-   model = load("assets/modelo.joblib")
-   y_predict = model.predict(df)
-   result_dict = {"R2 score": r2_score(y_real,y_predict) }
+@app.post("/retraining")
+def retraining(data_in: str):
+
+   print("\n\n\n---------------------------------------------------------------------------------------------------------\n\n\n")
+   # Extraction of the data
+   df = pd.read_json(data_in, )
+   var_obj = df["var_obj"][0]
+   df.drop("var_obj", inplace=True, axis=1)
+
+   ## Definition of trining features
+   features = list(df.columns)
+   features.remove(var_obj)
+   features.remove("Serial No.")
+
+   ## Definition of the pipeline
+   pipeline2export = Pipeline(
+      [
+         ('feature_selection', ColumnTransformer(
+               [
+                  ('selector', 'passthrough', features)
+               ]
+         )),
+         ('scaler', StandardScaler()),
+         ('model', LinearRegression())
+      ]
+   )
+   # Reentrenamiento del modelo
+   y_train = pd.Series(df[var_obj])
+   X_train = df.drop([var_obj], axis=1)
+   pipeline2export.fit(X_train, y_train)
+   dump(pipeline2export, 'assets/modelo.joblib')   # Se guarda
+
+   #Predicción para las metricas
+   y_predict = pipeline2export.predict(X_train)
+   result_dict = {"#Samples":len(y_train),
+                  "Current var objective":var_obj,
+                  "RMSE":round(mean_squared_error(y_train,y_predict),3),
+                  "MAE":round(mean_absolute_error(y_train,y_predict),3),
+                  "R2 score": round(r2_score(y_train,y_predict),3),
+                   }
    return result_dict
 
